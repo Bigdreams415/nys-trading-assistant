@@ -27,9 +27,12 @@ Reply fast: yes/no, the lot size for $50 risk, and an SL beyond the spike zone (
 - Commit and push the change so the next session has it.
 
 ## Schedules (set up in the claude.ai scheduler, not in this repo)
-- Morning plan 08:00 Lagos on weekdays (news, overnight recap, ranges and 4h side for both).
-- Scans during the day (see RULES.md for the active hours); hourly + 2 min checks while a trade is open;
-  the bedtime call before the user sleeps.
+They fire into one chat session. If the user starts a new session, recreate them there
+(the minimum interval for a repeating schedule is 1 hour):
+- Morning plan: `CRON_TZ=Africa/Lagos 0 8 * * 1-5` (news, overnight recap, scan, any setup).
+- Hourly scan: `CRON_TZ=Africa/Lagos 2 9-21 * * 1-5`, scan.py with `--lookback 4`. WATCH -> one-off re-check
+  15 minutes later (send_later), repeated only while price stays at the edge.
+- While a trade is open: a check after each hourly close + 2 min, and the bedtime call before the user sleeps.
 
 ## Code
 - tools/scan.py: live scanner. tools/common.py: shared helpers.
