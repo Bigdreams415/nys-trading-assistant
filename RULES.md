@@ -22,8 +22,9 @@ The user chose these rules. Don't re-argue them; change them only when the user 
 - **Mentor's trades (Amiin Fx, TikTok live): $50 per account.** The user sends every mentor call to Claude
   first; Claude replies fast with the lot size and a stop beyond the spike zone.
   Gold with a proper stop: 0.01 lot risks ~$22-25, so $50 = two 0.01 positions (or one 0.02).
-- **Max 4 trades a day** (user, Thu 22 Oct): up to $100 of risk a day per account at $25 each, only when there
-  are valid setups (never forced). Open question: do the mentor's $50 trades count inside the 4?
+- **Daily budget: max 4 trades and max $100 of risk per account per day** (user, Thu 22 Oct), only when there
+  are valid setups (never forced). The mentor's $50 trades count inside the $100: e.g. one mentor trade
+  + two of Claude's $25 setups. Track what's left of the day's budget before every new trade.
   Never add to a losing trade. No hedging, including across the two accounts.
 - Every trade goes through Claude first, including the mentor's and any other signal.
 

@@ -30,7 +30,8 @@ CFG = {
 def analyze(name, bars15, now, risk_usd, lookback=2):
     """Check the last `lookback` closed 15m bars (newest first) and report the first valid setup."""
     done15 = [b for b in bars15 if b[0] + timedelta(minutes=15) <= now]
-    price = done15[-1][4] if done15 else None
+    live = [b for b in bars15 if b[0] <= now]
+    price = live[-1][4] if live else None  # latest price, including the 15m candle still forming
     result = None
     for k in range(lookback):
         lines, order = analyze_bar(name, done15[:len(done15) - k], now, risk_usd, price)
@@ -67,8 +68,9 @@ def analyze_bar(name, done15, now, risk_usd, price):
     days = cfg["range_h"] // 24
     rh, rl = max(b[2] for b in win), min(b[3] for b in win)
     ts, o, h, l, c = last
-    lines = [f"{name} {f(c)} | 4h {side_txt} | {days}-day range {f(rl)} - {f(rh)} | 1h ATR {f(a)}",
-             f"  top {f(rh - c)} away ({(rh - c) / a:.1f} ATR), bottom {f(c - rl)} away ({(c - rl) / a:.1f} ATR)"]
+    lines = [f"{name} {f(price)} now | 4h {side_txt} | {days}-day range {f(rl)} - {f(rh)} | 1h ATR {f(a)}",
+             f"  top {f(rh - price)} away ({(rh - price) / a:.1f} ATR), "
+             f"bottom {f(price - rl)} away ({(price - rl) / a:.1f} ATR)"]
     if rh - rl < 4 * a:
         lines.append("  -> range too narrow (< 4 ATR): no trade")
         return lines, None
@@ -121,8 +123,8 @@ def analyze_bar(name, done15, now, risk_usd, price):
                          f"{'top' if sig == -1 else 'bottom'} of the {days}-day range; {room / risk:.1f}R of room")
             return lines, order
 
-    near_top = (rh - c) <= 0.5 * a or h > rh
-    near_bot = (c - rl) <= 0.5 * a or l < rl
+    near_top = (rh - price) <= 0.5 * a or h > rh
+    near_bot = (price - rl) <= 0.5 * a or l < rl
     if near_top and trend != 1:
         lines.append("  -> WATCH the top: price is at/near it. Re-check after the next 15m close.")
     elif near_bot and trend != -1:
