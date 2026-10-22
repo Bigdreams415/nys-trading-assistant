@@ -27,14 +27,29 @@ CFG = {
 RANGE_HOURS = 72
 
 
-def analyze(name, bars15, now, risk_usd):
+def analyze(name, bars15, now, risk_usd, lookback=2):
+    """Check the last `lookback` closed 15m bars (newest first) and report the first valid setup."""
+    done15 = [b for b in bars15 if b[0] + timedelta(minutes=15) <= now]
+    price = done15[-1][4] if done15 else None
+    result = None
+    for k in range(lookback):
+        lines, order = analyze_bar(name, done15[:len(done15) - k], now, risk_usd, price)
+        if result is None:
+            result = (lines, order)  # the newest bar's status is the default report
+        if order:
+            if k:
+                lines.insert(2, f"  (signal on the 15m candle {k} before the latest closed one)")
+            return lines, order
+    return result
+
+
+def analyze_bar(name, done15, now, risk_usd, price):
     cfg = CFG[name]
     f = cfg["fmt"].format
-    done15 = [b for b in bars15 if b[0] + timedelta(minutes=15) <= now]
     if len(done15) < 400:
         return [f"{name}: not enough data ({len(done15)} closed 15m bars)"], None
     last = done15[-1]
-    if now - (last[0] + timedelta(minutes=15)) > timedelta(minutes=45):
+    if now - (last[0] + timedelta(minutes=15)) > timedelta(minutes=75):
         return [f"{name}: data is stale (last closed 15m bar {last[0]:%a %H:%M} UTC) - market closed or feed lag"], None
     h1 = [b for b in resample(done15, 60) if b[0] + timedelta(hours=1) <= now]
     h4 = [b for b in resample(done15, 240) if b[0] + timedelta(hours=4) <= now]
@@ -69,8 +84,11 @@ def analyze(name, bars15, now, risk_usd):
                      f"but it fades the 4h trend -> no trade")
         sig = None
 
+    if sig and (price - c) * sig > 0.5 * a:
+        lines.append("  15m signal, but price has already moved more than 0.5 ATR from it -> missed, don't chase")
+        sig = None
     if sig:
-        entry = c  # market order at the next 15m open ~ last close
+        entry = price  # market order now ~ latest close
         sl = (h + 0.1 * a) if sig == -1 else (l - 0.1 * a)
         risk = (entry - sl) * sig
         floor = max(1.5 * a, cfg["min_stop"])
@@ -122,6 +140,7 @@ def main():
     ap.add_argument("--gold-offset", type=float, default=0.0, help="NYS minus Twelve Data XAU/USD price")
     ap.add_argument("--risk", type=float, default=25.0, help="$ risk per account")
     ap.add_argument("--now", help="UTC time to evaluate, e.g. 2026-10-22T09:00 (default: now)")
+    ap.add_argument("--lookback", type=int, default=2, help="closed 15m candles to check (default 2 = 30 min)")
     args = ap.parse_args()
     now = datetime.fromisoformat(args.now) if args.now else datetime.now(timezone.utc).replace(tzinfo=None)
     lagos = now + timedelta(hours=1)
@@ -133,7 +152,7 @@ def main():
     for name, path, off in (("GOLD", args.gold, args.gold_offset), ("BTC", args.btc, args.btc_offset)):
         if not path:
             continue
-        lines, order = analyze(name, load_td(path, CFG[name]["shift"], off), now, args.risk)
+        lines, order = analyze(name, load_td(path, CFG[name]["shift"], off), now, args.risk, args.lookback)
         print("\n".join(lines))
         if order:
             setups.append(order)
