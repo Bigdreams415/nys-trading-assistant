@@ -1,1 +1,2 @@
 date_lagos,time_lagos,instrument,side,entry,sl,tp,lots,source,result_usd_acc1,result_usd_acc2,result_r,notes
+2026-10-22,11:25,BTCUSD,BUY,82120 (est. - fill not sent),80700,"84800 (mentor 85000); TP to 82150 suggested 14:50 = breakeven exit",0.03 each account,mentor,OPEN,OPEN,,"Mentor signal, risk ~$43/acct. Close early if an H1 candle closes below 81200 NYS (Tuesday low). Bedtime call 21:45."
