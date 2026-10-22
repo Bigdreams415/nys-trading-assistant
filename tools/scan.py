@@ -21,10 +21,10 @@ from common import atr, ema, load_td, resample  # noqa: E402
 CFG = {
     # usd_per_lot = dollars per 1.00 lot per 1 point of price
     # min_stop = absolute minimum stop in points (RULES.md), on top of 1.5x H1 ATR
-    "GOLD": dict(shift=11, tp_r=4, be_r=2, usd_per_lot=100, step=0.01, min_stop=22, fmt="{:,.1f}"),
-    "BTC": dict(shift=0, tp_r=2, be_r=None, usd_per_lot=1, step=0.01, min_stop=650, fmt="{:,.0f}"),
+    # range_h = range length in closed 1h candles (gold: 1 day, BTC: 3 days; see STRATEGY.md)
+    "GOLD": dict(shift=11, tp_r=4, be_r=2, usd_per_lot=100, step=0.01, min_stop=22, range_h=24, fmt="{:,.1f}"),
+    "BTC": dict(shift=0, tp_r=2, be_r=None, usd_per_lot=1, step=0.01, min_stop=650, range_h=72, fmt="{:,.0f}"),
 }
-RANGE_HOURS = 72
 
 
 def analyze(name, bars15, now, risk_usd, lookback=2):
@@ -62,11 +62,12 @@ def analyze_bar(name, done15, now, risk_usd, price):
     trend = 1 if (c4 > e50[-1] and slope > 0) else -1 if (c4 < e50[-1] and slope < 0) else 0
     side_txt = {1: "UP -> buys at the bottom only", -1: "DOWN -> sells at the top only", 0: "no trend -> both edges"}[trend]
 
-    # 3-day range from the 1h bars that closed at or before the signal bar's start
-    win = [b for b in h1 if b[0] + timedelta(hours=1) <= last[0]][-RANGE_HOURS:]
+    # range from the 1h bars that closed at or before the signal bar's start
+    win = [b for b in h1 if b[0] + timedelta(hours=1) <= last[0]][-cfg["range_h"]:]
+    days = cfg["range_h"] // 24
     rh, rl = max(b[2] for b in win), min(b[3] for b in win)
     ts, o, h, l, c = last
-    lines = [f"{name} {f(c)} | 4h {side_txt} | 3-day range {f(rl)} - {f(rh)} | 1h ATR {f(a)}",
+    lines = [f"{name} {f(c)} | 4h {side_txt} | {days}-day range {f(rl)} - {f(rh)} | 1h ATR {f(a)}",
              f"  top {f(rh - c)} away ({(rh - c) / a:.1f} ATR), bottom {f(c - rl)} away ({(c - rl) / a:.1f} ATR)"]
     if rh - rl < 4 * a:
         lines.append("  -> range too narrow (< 4 ATR): no trade")
@@ -117,7 +118,7 @@ def analyze_bar(name, done15, now, risk_usd, price):
             order += f" | {lots:.2f} lot on EACH account = risk ${usd_risk:.0f}, target ${usd_tp:.0f}{flag}"
             lines.append("  -> " + order)
             lines.append(f"     why: 15m {'fake breakout' if (h > rh or l < rl) else 'rejection wick'} at the "
-                         f"{'top' if sig == -1 else 'bottom'} of the 3-day range; {room / risk:.1f}R of room")
+                         f"{'top' if sig == -1 else 'bottom'} of the {days}-day range; {room / risk:.1f}R of room")
             return lines, order
 
     near_top = (rh - c) <= 0.5 * a or h > rh

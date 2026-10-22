@@ -33,6 +33,8 @@ class bt:
     ema = staticmethod(common.ema)
 
 SPLIT = datetime(2026, 9, 27)
+RANGE_H = 72  # range length in 1h candles
+RANGE_MIN_ATR = 4  # minimum range height in ATR
 
 
 def prepare(p15, p1h, shift):
@@ -97,11 +99,11 @@ def candidates(d, strat):
             t_close = ts + timedelta(minutes=15)
             atr = lookup(d["atr_t"], d["atr_v"], t_close)
             k = bisect_right(d["h1_close"], ts) - 1
-            if atr is None or k < 72:
+            if atr is None or k < RANGE_H:
                 continue
-            w = h1[k - 71:k + 1]
+            w = h1[k - RANGE_H + 1:k + 1]
             rh, rl = max(b[2] for b in w), min(b[3] for b in w)
-            if rh - rl < 4 * atr or h - l <= 0:
+            if rh - rl < RANGE_MIN_ATR * atr or h - l <= 0:
                 continue
             rng = h - l
             sig = None
